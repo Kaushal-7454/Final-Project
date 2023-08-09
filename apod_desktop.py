@@ -23,9 +23,9 @@ import sys
 # Full paths of the image cache folder and database
 # - The image cache directory is a subdirectory of the specified parent directory.
 # - The image cache database is a sqlite database located in the image cache directory.
-script_dir = # SHOW CORRECT PATH HERE
-image_cache_dir = # SHOW CORRECT PATH HERE
-image_cache_db = # SHOW CORRECT PATH HERE
+script_dir ='C:\temp\getrepo\Final-Project'
+image_cache_dir = 'C:\temp\getrepo\Final-Project'
+image_cache_db = 'C:\temp\getrepo\Final-Project'
 
 def main():
     # Get the APOD date from the command line
@@ -64,7 +64,7 @@ def get_apod_date():
             sys.exit('Script execution aborted')
 
         # Validate that the date is within range
-        MIN_APOD_DATE = # Complete this
+        MIN_APOD_DATE = date(1994, 7, 20)
         if apod_date < MIN_APOD_DATE:
             print(f'Error: Date too far in past; First APOD was on {MIN_APOD_DATE.isoformat()}')
             sys.exit('Script execution aborted')
@@ -73,7 +73,7 @@ def get_apod_date():
             sys.exit('Script execution aborted')
     else:
         # No date parameter has been provided, so use today's date
-        apod_date = # Fill in here
+        apod_date = date.today()
     
     return apod_date
 
@@ -86,7 +86,21 @@ def init_apod_cache():
     # You should know what to do here as demonstrated in previous labs
 
     # Create the DB if it does not already exist
-    #Complete this with the correct instructions
+    con = sqlite3.connect('apod_application.db')
+    cur = con.cursor()
+
+    create_image_data_query = """
+    CREATE TABLE IF NOT EXISTS relationships
+    (
+    id INTEGER PRIMARY KEY,
+    person1_id INTEGER NOT NULL,
+    person2_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    start_date DATE NOT NULL,
+    FOREIGN KEY (person1_id) REFERENCES people (id),
+    FOREIGN KEY (person2_id) REFERENCES people (id)
+    );
+    """
 
 def add_apod_to_cache(apod_date):
     """Adds the APOD image from a specified date to the image cache.
@@ -111,7 +125,11 @@ def add_apod_to_cache(apod_date):
     print("APOD title:", apod_title)
 
     # Download the APOD image
-   # four lines of code expected here
+    apod_url = apod_info['url']
+    apod_image_data = apod_api.download_image(apod_url)
+    if apod_image_data is None:
+        print("Failed: unable to save data of image to the cache.")
+        return apod_id
 
     # Check whether the APOD already exists in the image cache
     apod_sha256 = hashlib.sha256(apod_image_data).hexdigest()
@@ -143,8 +161,9 @@ def add_apod_to_db(title, explanation, file_path, sha256):
     """
     print("Adding APOD to image cache DB...", end='')
     try:
-        #Add line one
-        # Add line two
+        db_cxn = sqlite3.conect(image_cache_db)
+        db_cursor = db_cxn.cursor()
+
         insert_image_query = """
             INSERT INTO image_data 
             (title, explanation, file_path, sha256)
@@ -223,7 +242,7 @@ def determine_apod_file_path(image_title, image_url):
     file_name = file_name.replace(' ', '_')
     
     # Remove any non-word characters
-    file_name = #Complete this
+    file_name = re.sub(r'\W+', '', file_name)
     
     # Append the extension to the file name
     file_name = '.'.join((file_name, file_ext))
@@ -245,9 +264,11 @@ def get_apod_info(image_id):
         (Dictionary keys: 'title', 'explanation', 'file_path')
     """
     # Query DB for image info
-    #Add line one here
-    # Add line two here
-    image_path_query = # add appropriate query_result
+    db_cxn = sqlite3.connect(image_cache_db)
+    db_cursor = db_cxn.cursor()
+    image_path_query = """
+            SELECT title, explanation, file_path 
+            FROM image_data WHERE id = ?;"""
     
     db_cursor.execute(image_path_query)
     query_result = db_cursor.fetchone()
@@ -264,10 +285,9 @@ def get_all_apod_titles():
     Returns:
         list: Titles of all images in the cache
     """
-    db_cxn = # Complete this
-    
+    db_cxn = sqlite3.connect(image_cache_db)
     db_cursor = db_cxn.cursor()
-    image_titles_query = # Complete this
+    image_titles_query = "SELECT title FROM image_data;"
     db_cursor.execute(image_titles_query)
     image_titles = db_cursor.fetchall()
     db_cxn.close()
